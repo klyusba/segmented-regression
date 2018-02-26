@@ -1,10 +1,19 @@
 # segmented-regression
 Discontinuous segmented linear regression
 
-![equation](http://www.sciweavers.org/tex2img.php?eq=D%28X%2BY%29%20%3D%20D%28X%29%20%2B%20D%28Y%29%20%2B%202cov%28X%2CY%29&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
+Model finds split points by greedy minimization of variance reduction. Linear trend is eliminated before variance is calculated.
+Model if fast and require only `numpy`.
 
-![equation](http://www.sciweavers.org/tex2img.php?eq=D%28Y-bX%29%20%3D%20D%28Y%29%20%2B%20b%5E2D%28X%29-2b%20%5Ccdot%20cov%28X%2CY%29&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
+# Example
+```python
+x = np.linspace(0., 500., 100000)
+y = 100. - 1.*x
+y[30000:] += 150
+y[60000:] += 150
+y[90000:] += 150
+y += np.random.normal(scale=10, size=y.shape)
 
-![equation](http://www.sciweavers.org/tex2img.php?eq=b%20%3D%20%20%5Cfrac%7Bcov%28X%2CY%29%7D%7Bvar%28X%29%7D&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
-
-![equation](http://www.sciweavers.org/tex2img.php?eq=D%28Y-bX%29%20%3D%20D%28Y%29%20-%20%20%5Cfrac%7Bcov%5E2%28X%2CY%29%7D%7Bvar%28X%29%7D%20&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0)
+m = SegmentedRegression()
+m.fit(x, y)
+```
+![alt text](/img/simple_saw.png "Simple saw example")
