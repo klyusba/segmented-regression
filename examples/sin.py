@@ -4,20 +4,15 @@ from segmentreg import SegmentedRegression
 import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
-    x = np.linspace(0., 500., 100000)
-    y = 100. - 1.*x
-    y[30000:] += 150
-    y[60000:] += 150
-    y[90000:] += 150
-    y += np.random.normal(scale=10, size=y.shape)
+    x = np.linspace(0., np.pi, 100000)
+    y = np.sin(x)
 
     t = time.time()
-    m = SegmentedRegression()
+    m = SegmentedRegression(eps=1e-3)
     m.fit(x, y)
     t = time.time() - t
     print('Splits: {}, time: {:.1f}ms'.format(len(m.segments_), t * 1000))
 
-    plt.plot(x, y, '.', alpha=.5, color='#999999')
     plt.plot(x, y, '.', alpha=.5, color='#999999')
     y_ = m.predict(x)
     plt.plot(x, y_, color='k')
