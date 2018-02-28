@@ -32,3 +32,6 @@ plt.plot(x, y, '.', alpha=.5, color='#999999')
 plt.plot(x, y_, color='k')
 ```
 ![alt text](/img/sin.png "Sin example")
+
+# Warning
+There are precision issues while variance and covariance being computed. Be careful of using low values of threshold `eps`.

@@ -1,8 +1,17 @@
 import numpy as np
-VARIANCE_PRECISION = 1e-7
 
 
 class SegmentedRegression:
+    """Segmented linear regression model.
+
+    Parameters
+    ----------
+    window : int, optional
+        limit of distance in points of two sequential break points
+
+    eps : float, optional
+        threshold when stop further split search
+    """
 
     def __init__(self, window=15, eps=None):
         # origin data
@@ -22,9 +31,14 @@ class SegmentedRegression:
 
         # model parameters
         self.eps = eps
-        self.window = window
+        self.window = int(window)
 
     def fit(self, x, y, is_sorted=False):
+        """Find segments and apply linear fit
+        :param x : 1d array, Data
+        :param y : 1d array, Target
+        :param is_sorted : boolean, (default=False) Whether x is already sorted
+        """
         assert len(x.shape) == 1, 'input data x expects to be 1d array'
         assert len(y.shape) == 1, 'input data y expects to be 1d array'
         assert x.shape[0] == y.shape[0], 'input data must have same length'
@@ -74,7 +88,7 @@ class SegmentedRegression:
         cov = xy_m - x_m * y_m
 
         x2_m = (x2[n2] - x2[n1]) / n_
-        var_x = x2_m - x_m * x_m + VARIANCE_PRECISION
+        var_x = x2_m - x_m * x_m
 
         k = cov / var_x
         b = y_m - k * x_m
@@ -91,9 +105,8 @@ class SegmentedRegression:
         cov = xy_m - x_m * y_m
 
         x2_m = (x2[n1: n2] - x2[n1]) / n_
-        # add VARIANCE_PRECISION to avoid division by zero
         var_x = x2_m - x_m * x_m
-        var_x[var_x == 0] = np.nan
+        var_x[var_x == 0] = np.nan  # to avoid division by zero
 
         y2_m = (y2[n1: n2] - y2[n1]) / n_
         var_y = y2_m - y_m * y_m
