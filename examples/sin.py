@@ -11,7 +11,7 @@ if __name__ == "__main__":
     m = SegmentedRegression(eps=1e-3)
     m.fit(x, y)
     t = time.time() - t
-    print('Splits: {}, time: {:.1f}ms'.format(len(m.segments_), t * 1000))
+    print('Segments: {}, time: {:.1f}ms'.format(len(m.segments_), t * 1000))
 
     plt.plot(x, y, '.', alpha=.5, color='#999999')
     y_ = m.predict(x)

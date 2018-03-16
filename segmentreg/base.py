@@ -60,39 +60,31 @@ class SegmentedRegression:
         if self.eps is None:
             self.eps = 3 * self._estimate_var(x, y)
 
-        self.segments_ = self._find_segments(0, x.shape[0], self.window, self.eps)
+        self.segments_ = self._find_segments(0, x.shape[0])
 
-    def _find_segments(self, n1, n2, window, eps):
+    def _find_segments(self, n1, n2):
+        window, eps = self.window, self.eps
         n, v, v_r = self._get_variance_slice(n1, n2)
 
         if (n - n1 <= window) or (n + window >= n2):
-            return []
+            return [self._get_segment_info(n1, n2), ]
         else:
             if v < eps and v_r < eps:
                 return [self._get_segment_info(n1, n), self._get_segment_info(n, n2)]
             elif v >= eps and v_r < eps:
-                return self._find_segments(n1, n - window, window, eps) + [self._get_segment_info(n, n2), ]
+                return self._find_segments(n1, n) + [self._get_segment_info(n, n2), ]
             elif v < eps and v_r >= eps:
-                return [self._get_segment_info(n1, n), ] + self._find_segments(n + window, n2, window, eps)
+                return [self._get_segment_info(n1, n), ] + self._find_segments(n, n2)
             else:
-                return self._find_segments(n1, n - window, window, eps) + \
-                       self._find_segments(n + window, n2, window, eps)
+                return self._find_segments(n1, n) + self._find_segments(n, n2)
 
     def _get_segment_info(self, n1, n2):
-        x, y, xy, x2, n = self._x, self._y, self._xy, self._x2, self._n
-        n2 = n2 - 1
-        n_ = n[n2] - n[n1] + 1
-        x_m = (x[n2] - x[n1]) / n_
-        y_m = (y[n2] - y[n1]) / n_
-        xy_m = (xy[n2] - xy[n1]) / n_
-        cov = xy_m - x_m * y_m
-
-        x2_m = (x2[n2] - x2[n1]) / n_
-        var_x = x2_m - x_m * x_m
-
-        k = cov / var_x
-        b = y_m - k * x_m
-        return self.x[n1], k, b
+        # because of precision issue we can not use cumsum values to estimate slope and intercept
+        x, y = self.x[n1: n2], self.y[n1: n2]
+        cov = np.cov(x, y)
+        k = cov[0, 1] / cov[0, 0]
+        b = y.mean() - k * x.mean()
+        return x[n1], k, b
 
     def _get_variance_slice(self, n1, n2):
         # TODO reduce number of divisions by n
@@ -154,12 +146,12 @@ class SegmentedRegression:
         len_x = len(x)
         n = min(1000, len_x // 10)
 
-        def get_var(y, x):
-            cov = np.cov(y, x)
-            return cov[0, 0] - cov[1, 0] * cov[1, 0] / cov[1, 1]
+        def get_var(x, y):
+            cov = np.cov(x, y)
+            return cov[1, 1] - (cov[1, 0] * cov[1, 0] / cov[0, 0] if cov[0, 0] > 0. else 0.)
 
         var = [
-            get_var(y[i1:i2], x[i1:i2])
+            get_var(x[i1:i2], y[i1:i2])
             for i1, i2 in zip(range(0, len_x, n), range(n, len_x + n, n))
         ]
 
