@@ -6,14 +6,14 @@ class SegmentedRegression:
 
     Parameters
     ----------
-    window : int, optional
+    min_segment_len : int, optional
         limit of distance in points of two sequential break points
 
     eps : float, optional
         threshold when stop further split search
     """
 
-    def __init__(self, window=15, eps=None):
+    def __init__(self, min_segment_len=15, eps=None):
         # origin data
         self.x = None
         self.y = None
@@ -31,7 +31,7 @@ class SegmentedRegression:
 
         # model parameters
         self.eps = eps
-        self.window = int(window)
+        self.min_seg = int(min_segment_len)
 
     def fit(self, x, y, is_sorted=False):
         """Find segments and apply linear fit
@@ -63,7 +63,7 @@ class SegmentedRegression:
         self.segments_ = self._find_segments(0, x.shape[0])
 
     def _find_segments(self, n1, n2):
-        window, eps = self.window, self.eps
+        window, eps = self.min_seg, self.eps
         n, v, v_r = self._get_variance_slice(n1, n2)
 
         if (n - n1 <= window) or (n + window >= n2):
@@ -84,7 +84,7 @@ class SegmentedRegression:
         cov = np.cov(x, y)
         k = cov[0, 1] / cov[0, 0]
         b = y.mean() - k * x.mean()
-        return x[n1], k, b
+        return x[0], k, b
 
     def _get_variance_slice(self, n1, n2):
         # TODO reduce number of divisions by n
