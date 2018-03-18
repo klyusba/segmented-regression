@@ -1,5 +1,7 @@
 import numpy as np
 
+FLOAT_PRECISION = 1e-14
+
 
 class SegmentedRegression:
     """Segmented linear regression model.
@@ -82,8 +84,12 @@ class SegmentedRegression:
         # because of precision issue we can not use cumsum values to estimate slope and intercept
         x, y = self.x[n1: n2], self.y[n1: n2]
         cov = np.cov(x, y)
-        k = cov[0, 1] / cov[0, 0]
-        b = y.mean() - k * x.mean()
+        if cov[0, 0] < FLOAT_PRECISION:
+            k = np.inf
+            b = np.nan
+        else:
+            k = cov[0, 1] / cov[0, 0]
+            b = y.mean() - k * x.mean()
         return x[0], k, b
 
     def _get_variance_slice(self, n1, n2):
@@ -98,12 +104,13 @@ class SegmentedRegression:
 
         x2_m = (x2[n1: n2] - x2[n1]) / n_
         var_x = x2_m - x_m * x_m
-        var_x[var_x == 0] = np.nan  # to avoid division by zero
+        var_x[var_x < FLOAT_PRECISION] = np.nan  # to avoid division by zero
 
         y2_m = (y2[n1: n2] - y2[n1]) / n_
         var_y = y2_m - y_m * y_m
 
         v = var_y - cov * cov / var_x
+        v[0] = np.nan  # one point estimation is rubbish
 
         n2 -= 1  # last element will be added in the end
         n_ = n[n2] - n[n1: n2]
@@ -114,7 +121,7 @@ class SegmentedRegression:
 
         x2_m = (x2[n2] - x2[n1: n2]) / n_
         var_x = x2_m - x_m * x_m
-        var_x[var_x == 0] = np.nan
+        var_x[var_x < FLOAT_PRECISION] = np.nan  # to avoid division by zero
 
         y2_m = (y2[n2] - y2[n1: n2]) / n_
         var_y = y2_m - y_m * y_m
@@ -122,24 +129,12 @@ class SegmentedRegression:
         v_r = np.zeros_like(v)
         v_r[1:] = var_y - cov * cov / var_x
 
-        n_ = n[n2]
-        x_m = x[n2] / n_
-        y_m = y[n2] / n_
-        xy_m = xy[n2] / n_
-        cov = xy_m - x_m * y_m
-
-        x2_m = x2[n2] / n_
-        var_x = x2_m - x_m * x_m
-        if var_x == 0:
-            var_x = np.nan
-
-        y2_m = y2[n2] / n_
-        var_y = y2_m - y_m * y_m
-
-        v_r[0] = var_y - cov * cov / var_x
-
-        n_relative = np.nanargmin(v + v_r)
-        return n1 + n_relative, v[n_relative], v_r[n_relative]
+        try:
+            n_relative = np.nanargmin(v + v_r)
+            return n1 + n_relative, v[n_relative], v_r[n_relative]
+        except:
+            # if all values is nan
+            return n1, 0, 0 
 
     @staticmethod
     def _estimate_var(x, y):
@@ -148,11 +143,11 @@ class SegmentedRegression:
 
         def get_var(x, y):
             cov = np.cov(x, y)
-            return cov[1, 1] - (cov[1, 0] * cov[1, 0] / cov[0, 0] if cov[0, 0] > 0. else 0.)
+            return cov[1, 1] - (cov[1, 0] * cov[1, 0] / cov[0, 0] if cov[0, 0] > FLOAT_PRECISION else 0.)
 
         var = [
             get_var(x[i1:i2], y[i1:i2])
-            for i1, i2 in zip(range(0, len_x, n), range(n, len_x + n, n))
+            for i1, i2 in zip(range(0, len_x, n), range(n, len_x, n))
         ]
 
         return np.median(var)
