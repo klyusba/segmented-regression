@@ -68,7 +68,7 @@ class SegmentedRegression:
         window, eps = self.min_seg, self.eps
         n, v, v_r = self._get_variance_slice(n1, n2)
 
-        if (n - n1 <= window) or (n + window >= n2):
+        if (n - n1 <= 2*window) or (n + 2*window >= n2):
             return [self._get_segment_info(n1, n2), ]
         else:
             if v < eps and v_r < eps:
@@ -93,7 +93,7 @@ class SegmentedRegression:
         return x[0], k, b
 
     def _get_variance_slice(self, n1, n2):
-        # TODO reduce number of divisions by n
+        # FIXME divide by (n-1) not by n
         x, y, xy, x2, y2, n = self._x, self._y, self._xy, self._x2, self._y2, self._n
 
         n_ = n[n1: n2] - (n[n1] - 1)
@@ -110,9 +110,9 @@ class SegmentedRegression:
         var_y = y2_m - y_m * y_m
 
         v = var_y - cov * cov / var_x
-        v[0] = np.nan  # one point estimation is rubbish
+        v[:self.min_seg] = np.nan  # one point estimation is rubbish
 
-        n2 -= 1  # last element will be added in the end
+        n2 -= 1
         n_ = n[n2] - n[n1: n2]
         x_m = (x[n2] - x[n1: n2]) / n_
         y_m = (y[n2] - y[n1: n2]) / n_
@@ -128,6 +128,7 @@ class SegmentedRegression:
 
         v_r = np.zeros_like(v)
         v_r[1:] = var_y - cov * cov / var_x
+        v_r[-self.min_seg:] = np.nan
 
         try:
             n_relative = np.nanargmin(v + v_r)

@@ -18,7 +18,6 @@ if __name__ == "__main__":
     print('Segments: {}, time: {:.1f}ms'.format(len(m.segments_), t * 1000))
 
     plt.plot(x, y, '.', alpha=.5, color='#999999')
-    plt.plot(x, y, '.', alpha=.5, color='#999999')
     y_ = m.predict(x)
     plt.plot(x, y_, color='k')
     plt.show()
