@@ -8,7 +8,7 @@ if __name__ == "__main__":
     y = np.sin(x)
 
     t = time.time()
-    m = SegmentedRegression(eps=1e-3)
+    m = SegmentedRegression(eps=1e-4)
     m.fit(x, y)
     t = time.time() - t
     print('Segments: {}, time: {:.1f}ms'.format(len(m.segments_), t * 1000))

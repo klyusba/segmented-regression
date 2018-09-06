@@ -1,6 +1,23 @@
 import numpy as np
+import bottleneck as bn
 
 FLOAT_PRECISION = 1e-14
+
+
+def move_var(x):
+    return bn.move_var(x, len(x), 1)
+
+
+def join_var(x, y):
+    var_x, var_y = move_var(x), move_var(y)
+    k = np.sqrt(var_y[-1] / var_x[-1])
+    cov = (move_var(y + k * x) - var_y - k ** 2 * var_x) / (2 * k)
+
+    i = np.where(var_x < FLOAT_PRECISION)[0].max() + 1
+    v = var_y
+    if i < len(x):
+        v[i:] -= cov[i:] * cov[i:] / var_x[i:]
+    return v
 
 
 class SegmentedRegression:
@@ -13,20 +30,22 @@ class SegmentedRegression:
 
     eps : float, optional
         threshold when stop further split search
+
+    Attributes
+    ----------
+    segments_ : list of tuples,
+        segment info: x_start, slope, intercept
+
+    Examples
+    --------
+    see examples folder
+
     """
 
     def __init__(self, min_segment_len=15, eps=None):
         # origin data
         self.x = None
         self.y = None
-
-        # cumulative sum data
-        self._n = None
-        self._x = None
-        self._y = None
-        self._xy = None
-        self._x2 = None
-        self._y2 = None
 
         # result
         self.segments_ = None
@@ -52,13 +71,6 @@ class SegmentedRegression:
         self.x = x
         self.y = y
 
-        self._n = np.arange(1, x.shape[0] + 1)
-        self._x = np.cumsum(x)
-        self._y = np.cumsum(y)
-        self._xy = np.cumsum(x * y)
-        self._x2 = np.cumsum(x * x)
-        self._y2 = np.cumsum(y * y)
-
         if self.eps is None:
             self.eps = 3 * self._estimate_var(x, y)
 
@@ -81,7 +93,6 @@ class SegmentedRegression:
                 return self._find_segments(n1, n) + self._find_segments(n, n2)
 
     def _get_segment_info(self, n1, n2):
-        # because of precision issue we can not use cumsum values to estimate slope and intercept
         x, y = self.x[n1: n2], self.y[n1: n2]
         cov = np.cov(x, y)
         if cov[0, 0] < FLOAT_PRECISION:
@@ -93,49 +104,12 @@ class SegmentedRegression:
         return x[0], k, b
 
     def _get_variance_slice(self, n1, n2):
-        # FIXME divide by (n-1) not by n
-        x, y, xy, x2, y2, n = self._x, self._y, self._xy, self._x2, self._y2, self._n
+        x, y = self.x[n1:n2], self.y[n1:n2]
+        v = join_var(x, y)
+        v_r = join_var(x[::-1], y[::-1])
 
-        n_ = n[n1: n2] - (n[n1] - 1)
-        x_m = (x[n1: n2] - x[n1]) / n_
-        y_m = (y[n1: n2] - y[n1]) / n_
-        xy_m = (xy[n1: n2] - xy[n1]) / n_
-        cov = xy_m - x_m * y_m
-
-        x2_m = (x2[n1: n2] - x2[n1]) / n_
-        var_x = x2_m - x_m * x_m
-        var_x[var_x < FLOAT_PRECISION] = np.nan  # to avoid division by zero
-
-        y2_m = (y2[n1: n2] - y2[n1]) / n_
-        var_y = y2_m - y_m * y_m
-
-        v = var_y - cov * cov / var_x
-        v[:self.min_seg] = np.nan  # one point estimation is rubbish
-
-        n2 -= 1
-        n_ = n[n2] - n[n1: n2]
-        x_m = (x[n2] - x[n1: n2]) / n_
-        y_m = (y[n2] - y[n1: n2]) / n_
-        xy_m = (xy[n2] - xy[n1: n2]) / n_
-        cov = xy_m - x_m * y_m
-
-        x2_m = (x2[n2] - x2[n1: n2]) / n_
-        var_x = x2_m - x_m * x_m
-        var_x[var_x < FLOAT_PRECISION] = np.nan  # to avoid division by zero
-
-        y2_m = (y2[n2] - y2[n1: n2]) / n_
-        var_y = y2_m - y_m * y_m
-
-        v_r = np.zeros_like(v)
-        v_r[1:] = var_y - cov * cov / var_x
-        v_r[-self.min_seg:] = np.nan
-
-        try:
-            n_relative = np.nanargmin(v + v_r)
-            return n1 + n_relative, v[n_relative], v_r[n_relative]
-        except:
-            # if all values is nan
-            return n1, 0, 0 
+        n_relative = np.argmin((v + v_r[::-1])[self.min_seg: -self.min_seg]) + self.min_seg
+        return n1 + n_relative, v[n_relative], v_r[-n_relative]
 
     @staticmethod
     def _estimate_var(x, y):

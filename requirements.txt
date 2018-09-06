@@ -1,1 +1,2 @@
 numpy
+bottleneck >= 1.1.0

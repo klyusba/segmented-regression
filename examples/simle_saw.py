@@ -4,12 +4,13 @@ from segmentreg import SegmentedRegression
 import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
-    x = np.linspace(0., 500., 100000)
-    y = 100. - 1.*x
-    y[30000:] += 150
-    y[60000:] += 150
-    y[90000:] += 150
-    y += np.random.normal(scale=10, size=y.shape)
+    # make x and y have different scale for testing accuracy
+    x = np.linspace(0., 5e8, 100000)
+    y = 1. - 1e-8*x
+    y[30000:] += 1.5
+    y[60000:] += 1.5
+    y[90000:] += 1.5
+    y += np.random.normal(scale=0.1, size=y.shape)
 
     t = time.time()
     m = SegmentedRegression()
